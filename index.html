@@ -380,13 +380,13 @@
     }
 
     function difficulty() {
-      return 1 + state.elapsed / 24000;
+      return 1 + state.elapsed / 48000;
     }
 
     function spawnObject() {
       const d = difficulty();
       const radius = 18 + Math.random() * 12;
-      const isBomb = state.score >= 15 && Math.random() < Math.min(0.34, 0.16 + (state.score - 15) * 0.012);
+      const isBomb = state.score >= 10 && Math.random() < Math.min(0.34, 0.16 + (state.score - 10) * 0.012);
       state.objects.push({
         x: 22 + Math.random() * (state.width - 44),
         y: -radius,
@@ -437,6 +437,9 @@
 
         if (object.y - object.radius > state.height) {
           state.objects.splice(i, 1);
+          if (object.type === "bomb") {
+            continue;
+          }
           state.lives -= 1;
           playMissSound();
           updateHud();
