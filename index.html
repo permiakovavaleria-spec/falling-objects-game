@@ -368,11 +368,13 @@
       requestAnimationFrame(loop);
     }
 
-    function endGame() {
+    function endGame(reason = "miss") {
       state.running = false;
       state.gameOver = true;
       overlayTitle.textContent = "Game Over";
-      overlayText.textContent = `Твой счет: ${state.score}. Нажми рестарт и попробуй еще раз.`;
+      overlayText.textContent = reason === "bomb"
+        ? `Поймал бомбу. Твой счет: ${state.score}. Нажми рестарт и попробуй еще раз.`
+        : `Твой счет: ${state.score}. Нажми рестарт и попробуй еще раз.`;
       startBtn.textContent = "Рестарт";
       overlay.hidden = false;
     }
@@ -384,12 +386,14 @@
     function spawnObject() {
       const d = difficulty();
       const radius = 18 + Math.random() * 12;
+      const isBomb = state.score >= 15 && Math.random() < Math.min(0.34, 0.16 + (state.score - 15) * 0.012);
       state.objects.push({
         x: 22 + Math.random() * (state.width - 44),
         y: -radius,
         radius,
-        speed: 140 + Math.random() * 90 + d * 42,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        speed: 140 + Math.random() * 90 + d * 42 + (isBomb ? 18 : 0),
+        color: isBomb ? "#050505" : colors[Math.floor(Math.random() * colors.length)],
+        type: isBomb ? "bomb" : "bonus",
         spin: Math.random() * Math.PI,
         wobble: Math.random() * 2 - 1
       });
@@ -417,6 +421,12 @@
 
         if (inBasketX && inBasketY) {
           state.objects.splice(i, 1);
+          if (object.type === "bomb") {
+            playBombSound();
+            updateHud();
+            endGame("bomb");
+            break;
+          }
           state.score += 1;
           state.flash = 1;
           playCatchSound();
@@ -515,6 +525,24 @@
       oscillator.stop(now + 0.45);
     }
 
+    function playBombSound() {
+      unlockAudio();
+      if (!state.audio) return;
+      const now = state.audio.currentTime;
+      const oscillator = state.audio.createOscillator();
+      const gain = state.audio.createGain();
+      oscillator.type = "sawtooth";
+      oscillator.frequency.setValueAtTime(140, now);
+      oscillator.frequency.exponentialRampToValueAtTime(46, now + 0.48);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.09, now + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
+      oscillator.connect(gain);
+      gain.connect(state.audio.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.56);
+    }
+
     function drawBackground() {
       ctx.clearRect(0, 0, state.width, state.height);
       ctx.save();
@@ -532,6 +560,11 @@
     }
 
     function drawObject(object) {
+      if (object.type === "bomb") {
+        drawBomb(object);
+        return;
+      }
+
       ctx.save();
       ctx.translate(object.x, object.y);
       ctx.rotate(object.spin + state.elapsed / 700);
@@ -547,6 +580,41 @@
       ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
       ctx.beginPath();
       ctx.arc(0, 0, object.radius * 0.34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawBomb(object) {
+      ctx.save();
+      ctx.translate(object.x, object.y);
+      ctx.rotate(Math.sin(state.elapsed / 260 + object.spin) * 0.22);
+      ctx.fillStyle = "#050505";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 4, object.radius * 0.92, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#222832";
+      roundedRect(-object.radius * 0.26, -object.radius * 0.96, object.radius * 0.52, object.radius * 0.32, 4);
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffd166";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -object.radius * 0.98);
+      ctx.quadraticCurveTo(object.radius * 0.62, -object.radius * 1.4, object.radius * 0.92, -object.radius * 1.05);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff5a72";
+      ctx.beginPath();
+      ctx.arc(object.radius * 0.94, -object.radius * 1.04, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+      ctx.beginPath();
+      ctx.arc(-object.radius * 0.28, -object.radius * 0.18, object.radius * 0.22, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
