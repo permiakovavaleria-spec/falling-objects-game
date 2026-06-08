@@ -316,6 +316,7 @@
       elapsed: 0,
       basket: { x: 0, y: 0, width: 96, height: 72 },
       objects: [],
+      lifeLossScores: [],
       avatar: null,
       flash: 0,
       audio: null,
@@ -352,6 +353,7 @@
       state.elapsed = 0;
       state.spawnTimer = 0;
       state.objects = [];
+      state.lifeLossScores = [];
       state.gameOver = false;
       state.flash = 0;
       state.basket.x = state.width / 2;
@@ -428,7 +430,7 @@
             break;
           }
           state.score += 1;
-          awardLifeBonus();
+          awardLifeRecovery();
           state.flash = 1;
           playCatchSound();
           hintEl.classList.add("hidden");
@@ -442,6 +444,7 @@
             continue;
           }
           state.lives -= 1;
+          state.lifeLossScores.push(state.score);
           playMissSound();
           updateHud();
           if (state.lives <= 0) {
@@ -458,8 +461,9 @@
       speedEl.textContent = difficulty().toFixed(1);
     }
 
-    function awardLifeBonus() {
-      if (state.score > 0 && state.score % 20 === 0 && state.lives < 3) {
+    function awardLifeRecovery() {
+      while (state.lifeLossScores.length > 0 && state.lives < 3 && state.score >= state.lifeLossScores[0] + 30) {
+        state.lifeLossScores.shift();
         state.lives += 1;
       }
     }
