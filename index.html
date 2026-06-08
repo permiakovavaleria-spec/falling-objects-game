@@ -428,6 +428,7 @@
             break;
           }
           state.score += 1;
+          awardLifeBonus();
           state.flash = 1;
           playCatchSound();
           hintEl.classList.add("hidden");
@@ -455,6 +456,12 @@
       scoreEl.textContent = state.score;
       livesEl.textContent = state.lives;
       speedEl.textContent = difficulty().toFixed(1);
+    }
+
+    function awardLifeBonus() {
+      if (state.score > 0 && state.score % 20 === 0 && state.lives < 3) {
+        state.lives += 1;
+      }
     }
 
     function unlockAudio() {
