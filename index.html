@@ -318,7 +318,8 @@
       objects: [],
       avatar: null,
       flash: 0,
-      audio: null
+      audio: null,
+      audioPrimed: false
     };
 
     const colors = ["#18c78f", "#ffd166", "#59a6ff", "#ff5a72", "#f7f7fb"];
@@ -451,7 +452,9 @@
       }
 
       if (state.audio.state === "suspended") {
-        state.audio.resume();
+        state.audio.resume().then(primeAudio).catch(() => {});
+      } else {
+        primeAudio();
       }
     }
 
@@ -468,6 +471,21 @@
       gain.connect(state.audio.destination);
       oscillator.start(startTime);
       oscillator.stop(startTime + duration + 0.03);
+    }
+
+    function primeAudio() {
+      if (!state.audio || state.audioPrimed) return;
+      state.audioPrimed = true;
+      const now = state.audio.currentTime;
+      const oscillator = state.audio.createOscillator();
+      const gain = state.audio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(440, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      oscillator.connect(gain);
+      gain.connect(state.audio.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.04);
     }
 
     function playCatchSound() {
@@ -644,6 +662,9 @@
       image.src = URL.createObjectURL(file);
     });
 
+    startBtn.addEventListener("pointerdown", unlockAudio);
+    restartBtn.addEventListener("pointerdown", unlockAudio);
+    document.addEventListener("touchstart", unlockAudio, { passive: true, once: true });
     startBtn.addEventListener("click", start);
     restartBtn.addEventListener("click", start);
     window.addEventListener("resize", resize);
