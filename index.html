@@ -52,7 +52,7 @@
     header {
       z-index: 2;
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       padding: max(14px, env(safe-area-inset-top)) 14px 10px;
     }
@@ -257,6 +257,10 @@
         <span>Скорость</span>
         <strong id="speed">1.0</strong>
       </div>
+      <div class="metric">
+        <span>Рекорд</span>
+        <strong id="record">0</strong>
+      </div>
     </header>
 
     <section class="stage" id="stage">
@@ -306,6 +310,7 @@
     const scoreEl = document.getElementById("score");
     const livesEl = document.getElementById("lives");
     const speedEl = document.getElementById("speed");
+    const recordEl = document.getElementById("record");
     const hintEl = document.getElementById("hint");
     const overlay = document.getElementById("overlay");
     const overlayTitle = document.getElementById("overlayTitle");
@@ -315,12 +320,22 @@
     const musicBtn = document.getElementById("musicBtn");
     const photoInput = document.getElementById("photoInput");
     const photoText = document.getElementById("photoText");
+    const recordStorageKey = "fallingObjectsRecord";
+
+    function loadRecord() {
+      try {
+        return Number(localStorage.getItem(recordStorageKey) || 0);
+      } catch (error) {
+        return 0;
+      }
+    }
 
     const state = {
       width: 0,
       height: 0,
       pixelRatio: 1,
       score: 0,
+      record: loadRecord(),
       lives: 3,
       running: false,
       gameOver: false,
@@ -449,6 +464,7 @@
             break;
           }
           state.score += 1;
+          updateRecord();
           awardLifeRecovery();
           state.flash = 1;
           playCatchSound();
@@ -478,6 +494,17 @@
       scoreEl.textContent = state.score;
       livesEl.textContent = state.lives;
       speedEl.textContent = difficulty().toFixed(1);
+      recordEl.textContent = state.record;
+    }
+
+    function updateRecord() {
+      if (state.score <= state.record) return;
+      state.record = state.score;
+      try {
+        localStorage.setItem(recordStorageKey, String(state.record));
+      } catch (error) {
+        // Some mobile private modes block storage; the live session record still works.
+      }
     }
 
     function awardLifeRecovery() {
