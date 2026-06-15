@@ -599,9 +599,37 @@
       unlockAudio();
       if (!state.audio) return;
       const now = state.audio.currentTime;
-      playTone(523.25, now, 0.11, "sine", 0.08);
-      playTone(659.25, now + 0.075, 0.12, "sine", 0.075);
-      playTone(783.99, now + 0.15, 0.16, "triangle", 0.06);
+      playTone(220, now, 0.055, "triangle", 0.075);
+      playTone(176, now + 0.055, 0.065, "sine", 0.07);
+      playBiteNoise(now + 0.012);
+    }
+
+    function playBiteNoise(startTime) {
+      if (!state.audio) return;
+      const duration = 0.075;
+      const sampleRate = state.audio.sampleRate;
+      const buffer = state.audio.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        const decay = 1 - i / data.length;
+        data[i] = (Math.random() * 2 - 1) * decay * 0.38;
+      }
+
+      const source = state.audio.createBufferSource();
+      const filter = state.audio.createBiquadFilter();
+      const gain = state.audio.createGain();
+      source.buffer = buffer;
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(760, startTime);
+      filter.Q.setValueAtTime(1.8, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.055, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(state.audio.destination);
+      source.start(startTime);
+      source.stop(startTime + duration);
     }
 
     function playMissSound() {
