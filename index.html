@@ -599,36 +599,45 @@
       unlockAudio();
       if (!state.audio) return;
       const now = state.audio.currentTime;
-      playTone(145, now, 0.045, "triangle", 0.12);
-      playTone(92, now + 0.04, 0.055, "square", 0.08);
-      playCrunchNoise(now + 0.006, 920, 0.12);
-      playCrunchNoise(now + 0.072, 1350, 0.09);
+      playTone(165, now, 0.035, "triangle", 0.1);
+      playTone(330, now + 0.018, 0.025, "square", 0.055);
+      playAppleCrunch(now + 0.004);
     }
 
-    function playCrunchNoise(startTime, frequency, volume) {
+    function playAppleCrunch(startTime) {
       if (!state.audio) return;
-      const duration = 0.085;
+      const duration = 0.14;
       const sampleRate = state.audio.sampleRate;
       const buffer = state.audio.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < data.length; i += 1) {
-        const decay = 1 - i / data.length;
-        const crackle = Math.random() > 0.48 ? 1 : -1;
-        data[i] = crackle * decay * (0.35 + Math.random() * 0.65);
+        const t = i / data.length;
+        const attack = Math.min(1, t / 0.08);
+        const decay = Math.pow(1 - t, 2.2);
+        const snap = Math.random() > 0.42 ? 1 : -1;
+        const grain = Math.sin(i * 0.62) * 0.28 + snap * (0.45 + Math.random() * 0.55);
+        data[i] = grain * attack * decay;
       }
 
       const source = state.audio.createBufferSource();
-      const filter = state.audio.createBiquadFilter();
+      const crunchFilter = state.audio.createBiquadFilter();
+      const bodyFilter = state.audio.createBiquadFilter();
       const gain = state.audio.createGain();
       source.buffer = buffer;
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(frequency, startTime);
-      filter.Q.setValueAtTime(4.5, startTime);
+      crunchFilter.type = "bandpass";
+      crunchFilter.frequency.setValueAtTime(1850, startTime);
+      crunchFilter.frequency.exponentialRampToValueAtTime(980, startTime + duration);
+      crunchFilter.Q.setValueAtTime(3.2, startTime);
+      bodyFilter.type = "lowpass";
+      bodyFilter.frequency.setValueAtTime(2400, startTime);
+      bodyFilter.Q.setValueAtTime(0.8, startTime);
       gain.gain.setValueAtTime(0.0001, startTime);
-      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.16, startTime + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.075, startTime + 0.055);
       gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-      source.connect(filter);
-      filter.connect(gain);
+      source.connect(crunchFilter);
+      crunchFilter.connect(bodyFilter);
+      bodyFilter.connect(gain);
       gain.connect(state.audio.destination);
       source.start(startTime);
       source.stop(startTime + duration);
