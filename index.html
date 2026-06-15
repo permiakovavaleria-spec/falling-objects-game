@@ -339,6 +339,9 @@
     </footer>
   </main>
 
+  <audio id="appleSound" src="assets/apple-bite.mp3" preload="auto"></audio>
+  <audio id="bombSound" src="assets/bomb-detonation.mp3" preload="auto"></audio>
+
   <div class="overlay" id="overlay">
     <div class="dialog">
       <h1 id="overlayTitle">Готов?</h1>
@@ -369,6 +372,8 @@
     const pauseMenu = document.getElementById("pauseMenu");
     const photoInput = document.getElementById("photoInput");
     const photoText = document.getElementById("photoText");
+    const appleSound = document.getElementById("appleSound");
+    const bombSound = document.getElementById("bombSound");
     const recordStorageKey = "fallingObjectsRecord";
 
     function loadRecord() {
@@ -399,6 +404,7 @@
       flash: 0,
       audio: null,
       audioPrimed: false,
+      mediaPrimed: false,
       musicEnabled: true,
       catchSoundEnabled: true,
       musicTimer: null,
@@ -581,6 +587,8 @@
       } else {
         primeAudio();
       }
+
+      primeMediaAudio();
     }
 
     function playTone(frequency, startTime, duration, type, volume) {
@@ -613,9 +621,49 @@
       oscillator.stop(now + 0.04);
     }
 
+    function primeMediaAudio() {
+      if (state.mediaPrimed) return;
+      state.mediaPrimed = true;
+      [appleSound, bombSound].forEach((sound) => {
+        sound.load();
+        sound.volume = 1;
+        sound.muted = true;
+        const playPromise = sound.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          playPromise
+            .then(() => {
+              sound.pause();
+              sound.currentTime = 0;
+              sound.muted = false;
+            })
+            .catch(() => {
+              sound.muted = false;
+            });
+        } else {
+          sound.muted = false;
+        }
+      });
+    }
+
+    function playMediaSound(sound, fallback) {
+      sound.pause();
+      sound.currentTime = 0;
+      const playPromise = sound.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(fallback);
+      }
+    }
+
     function playCatchSound() {
       if (!state.catchSoundEnabled) return;
       unlockAudio();
+      playMediaSound(appleSound, () => {
+        if (!state.audio) return;
+        playGeneratedAppleCrunch();
+      });
+    }
+
+    function playGeneratedAppleCrunch() {
       if (!state.audio) return;
       const now = state.audio.currentTime;
       playTone(165, now, 0.035, "triangle", 0.1);
@@ -682,6 +730,10 @@
 
     function playBombSound() {
       unlockAudio();
+      playMediaSound(bombSound, playGeneratedBombSound);
+    }
+
+    function playGeneratedBombSound() {
       if (!state.audio) return;
       const now = state.audio.currentTime;
       const oscillator = state.audio.createOscillator();
