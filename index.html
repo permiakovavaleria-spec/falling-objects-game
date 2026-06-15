@@ -888,17 +888,20 @@
     }
 
     function moveBasket(clientX) {
+      if (state.paused) return;
       const rect = canvas.getBoundingClientRect();
       state.basket.x = clamp(clientX - rect.left, state.basket.width / 2, state.width - state.basket.width / 2);
       if (!state.running) draw();
     }
 
     stage.addEventListener("pointerdown", (event) => {
+      if (state.paused) return;
       moveBasket(event.clientX);
       stage.setPointerCapture(event.pointerId);
     });
 
     stage.addEventListener("pointermove", (event) => {
+      if (state.paused) return;
       moveBasket(event.clientX);
     });
 
